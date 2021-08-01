@@ -1,5 +1,14 @@
 # Build stage
 FROM node:14.17.3-buster AS build
+# Native dependencies
+RUN apt update && apt install -y \
+    python3 \
+    make \
+    g++ \
+    node-gyp \
+    node-pre-gyp \
+    libpq-dev \
+    bcrypt
 # Install NodeJs dependencies
 WORKDIR /build
 COPY package.json ./

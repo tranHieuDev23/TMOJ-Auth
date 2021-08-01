@@ -1,4 +1,5 @@
 import { Request, Response, RequestHandler } from "express";
+import { BadRequest } from "express-openapi-validator/dist/openapi.validator";
 import { StatusCodes } from "http-status-codes";
 import { ErrorMessage } from "../../models/error-message";
 import { DatabaseApiError } from "../proxies/database-proxy";
@@ -10,6 +11,11 @@ export function errorHandler(
     next: RequestHandler
 ) {
     if (error instanceof DatabaseApiError) {
+        return response
+            .status(error.status)
+            .json(new ErrorMessage(error.message));
+    }
+    if (error instanceof BadRequest) {
         return response
             .status(error.status)
             .json(new ErrorMessage(error.message));

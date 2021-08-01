@@ -1,0 +1,491 @@
+{
+    "openapi": "3.0.2",
+    "info": {
+        "title": "TMOJ's Authentication and User Management data service (tmoj-auth)",
+        "version": "1.0",
+        "description": "This service is responsible for handling user's authentication and management.",
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        }
+    },
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "description": "An User on the TMOJ platform.",
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "description": "The username of the user. Should be unique for each user.",
+                        "minLength": 6,
+                        "maxLength": 32,
+                        "pattern": "^[a-zA-Z\\d_]{6,32}$"
+                    },
+                    "displayName": {
+                        "type": "string",
+                        "description": "The full, proper name to be displayed on the UI.",
+                        "minLength": 1,
+                        "maxLength": 64
+                    }
+                }
+            },
+            "AuthenticationDetail": {
+                "type": "object",
+                "description": "Information necessary for the authentication of an user.",
+                "properties": {
+                    "method": {
+                        "type": "string",
+                        "description": "Methods to authenticate an user.",
+                        "enum": [
+                            "Password"
+                        ]
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "A string (password, token, etc...) associated with the authentication."
+                    }
+                }
+            },
+            "ErrorMessage": {
+                "type": "object",
+                "description": "Message to response to the caller of the API when an error happens.",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "cookieAuthentication": {
+                "type": "apiKey",
+                "description": "A JSON Web Token (JWT) which can be used to authenticate the user.",
+                "in": "cookie",
+                "name": "tmoj-token"
+            }
+        }
+    },
+    "paths": {
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "description": "Register a new user on the system, and immediately log them in.",
+                "requestBody": {
+                    "description": "Information needed to create the new user.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "user": {
+                                        "$ref": "#/components/schemas/User"
+                                    },
+                                    "authenticationDetail": {
+                                        "$ref": "#/components/schemas/AuthenticationDetail"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The user was registered successfully. The user's formatted information is sent as a response.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Set a new cookie with a JWT string, which can be used for user authentication afterwards.",
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "tmoj-token=abcde12345; Path=/; HttpOnly"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cannot register new user - invalid user information.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Wrong username or password."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "description": "Log a user into the system.",
+                "requestBody": {
+                    "description": "Username of the user to login, plus authentication detail to log that user in.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "username": {
+                                        "$ref": "#/components/schemas/User/properties/username"
+                                    },
+                                    "authenticationDetail": {
+                                        "$ref": "#/components/schemas/AuthenticationDetail"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login succeeded.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Set a new cookie with a JWT string, which can be used for user authentication afterwards.",
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "tmoj-token=abcde12345; Path=/; HttpOnly"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Login failed - invalid user detail.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Wrong username or password."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh-token": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "description": "Validate the JWT included in the `tmoj-token` cookie sent to the client's side. If the token is valid and has not expired, blacklist that token and send the client a newer token along with information about the user who owns the token. Otherwise, send an error message.",
+                "security": [
+                    {
+                        "cookieAuthentication": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The token is valid and has not expired. A new cookie and the token's owner information is sent as a response.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Refresh cookie with a new JWT string, which can be used for user authentication afterwards.",
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "tmoj-token=abcde12345; Path=/; HttpOnly"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The token is either invalid or has expired.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Invalid JWT."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "description": "Log a user out of the system.",
+                "security": [
+                    {
+                        "cookieAuthentication": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Logout succeeded.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Remove the cookie with the JWT used to validate user.",
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "tmoj-token=deleted; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT",
+                                "required": true
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The action is not authorized.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "The action is not authorized."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/validate-username-available": {
+            "post": {
+                "tags": [
+                    "User Management"
+                ],
+                "description": "Validate if the username has been taken or not.",
+                "requestBody": {
+                    "description": "The username to validate.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "username": {
+                                        "$ref": "#/components/schemas/User/properties/username"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Validation result.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "available": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/update-user": {
+            "post": {
+                "tags": [
+                    "User Management"
+                ],
+                "description": "Update the user's information.",
+                "security": [
+                    {
+                        "cookieAuthentication": []
+                    }
+                ],
+                "requestBody": {
+                    "description": "New user information to update.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "displayName": {
+                                        "$ref": "#/components/schemas/User/properties/displayName"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User's information updated successfully. The user's formatted information is sent as a response.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cannot update the user's information - one or more fields contain invalid values.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Display name should not be longer than 64 characters."
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The action is not authorized.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "The action is not authorized."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/update-user-password": {
+            "post": {
+                "tags": [
+                    "User Management"
+                ],
+                "description": "Update the current logged in user's password.",
+                "security": [
+                    {
+                        "cookieAuthentication": []
+                    }
+                ],
+                "requestBody": {
+                    "description": "The user's original and updated passwords.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "oldPassword": {
+                                        "type": "string",
+                                        "description": "The user's old password."
+                                    },
+                                    "newPassword": {
+                                        "type": "string",
+                                        "description": "The user's updated password."
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The user's password is updated successfully."
+                    },
+                    "400": {
+                        "description": "The user's password is not updated successfully - updated password is equal to old password.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Updated password is equal to old password."
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The action is not authorized.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Old password is not correct."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/internal/auth/validate-token": {
+            "post": {
+                "tags": [
+                    "Internal"
+                ],
+                "description": "Validate the JWT included in the `tmoj-token` cookie sent to the client's side. If the token is valid and has not expired, send the client information about the user who owns the token. Otherwise, send an error message. This API is meant to be used by other APIs to validate user's authorization on the system, since it doesn't tamper with the cookie.",
+                "security": [
+                    {
+                        "cookieAuthentication": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The token is valid and has not expired. The token's owner information is sent as a response.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The token is either invalid or has expired.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorMessage"
+                                },
+                                "example": {
+                                    "message": "Invalid JWT."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

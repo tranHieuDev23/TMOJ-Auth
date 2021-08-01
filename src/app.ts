@@ -6,7 +6,7 @@ import { authRouter } from "./controllers/routes/auth";
 import { userManagementRouter } from "./controllers/routes/users";
 import { internalRouter } from "./controllers/routes/internal";
 import { env } from "./util/env";
-import { errorHandlerRouter } from "./controllers/routes/error-handler";
+import { errorHandler } from "./controllers/routes/error-handler";
 
 // Create Express server
 const app = express();
@@ -24,6 +24,6 @@ app.use("/api/users", userManagementRouter);
 app.use("/api/internal", internalRouter);
 
 // Error handler
-app.use(errorHandlerRouter);
+app.use("/api", errorHandler);
 
 export default app;

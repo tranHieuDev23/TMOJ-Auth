@@ -455,11 +455,24 @@
                     "Internal"
                 ],
                 "description": "Validate the JWT included in the `tmoj-token` cookie sent to the client's side. If the token is valid and has not expired, send the client information about the user who owns the token. Otherwise, send an error message. This API is meant to be used by other APIs to validate user's authorization on the system, since it doesn't tamper with the cookie.",
-                "security": [
-                    {
-                        "cookieAuthentication": []
-                    }
-                ],
+                "requestBody": {
+                    "description": "The JWT to validate.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "description": "The JWT to validate.",
+                                "properties": {
+                                    "jwt": {
+                                        "type": "string",
+                                        "description": "The JWT to validate"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "responses": {
                     "200": {
                         "description": "The token is valid and has not expired. The token's owner information is sent as a response.",

@@ -38,14 +38,14 @@ export async function generateJwt(
 
 export async function validateJwt(jwt: string): Promise<User> {
     const now = new Date();
-    return new Promise<User>((resolve, reject) => {
+    return new Promise<User>((resolve) => {
         verify(
             jwt,
             env.JWT_PUBLIC_KEY,
             { algorithms: ["RS512"] },
             async (err, decoded) => {
                 if (err) {
-                    return reject(err);
+                    return resolve(null);
                 }
                 const jwtId = decoded.jti;
                 const blacklistedJwt = await getBlacklistedJwt(jwtId);
